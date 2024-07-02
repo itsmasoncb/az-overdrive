@@ -25,6 +25,8 @@ libbyapp_url = 'https://share.libbyapp.com/title/'
 
 
 def setup_driver():
+    """
+    """
     # Setup Selenium WebDriver
     options = ChromeOptions()
     options.add_argument('--headless')
@@ -83,6 +85,8 @@ def extract_wishlist_urls(soup):
 
 
 def clean_urls(urls):
+    """
+    """
     cleaned_urls = []
     invalid_urls = []
     for url in urls:
@@ -145,6 +149,8 @@ def asin_to_isbn(asin_list: list):
 
 
 def get_amazon_wishlist_urls():
+    """
+    """
     try:
         driver = setup_driver()
         driver.get(wishlist_url)
