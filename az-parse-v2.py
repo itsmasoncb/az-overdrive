@@ -20,8 +20,22 @@ logging.basicConfig(level=logging.INFO)
 os.environ['SE_AVOID_STATS'] = 'true'
 
 wishlist_url = 'https://www.amazon.com/hz/wishlist/ls/36B9FRG2AYASB'
-overdrive_url = 'https://www.overdrive.com/search?q='
-libbyapp_url = 'https://share.libbyapp.com/title/'
+
+# Overdrive doesn't seem to search ISBNs anymore
+unused_base_urls = {'overdrive_url': 'https://www.overdrive.com/search?q={}'}
+
+isbn_10_base_urls = {'libby_base_url': 'https://libbyapp.com/search/wakegov/search/query-{}/page-1/',
+                     'goodreads_base_url': 'https://www.goodreads.com/search?q={}&search_type=books',
+                     'libgen_base_url': 'https://libgen.is/search.php?req={}',
+                     'open_libray': 'https://openlibrary.org/search?isbn={}'}
+
+# Google works best with ISBN13 searches.
+isbn_13_base_urls = {'google_books_base_url': 'https://www.google.com/search?tbo=p&tbm=bks&q=isbn%{}'}
+
+# Consider comparing price on these?
+paid_base_urls = {'amazon_shopping': 'https://www.amazon.com/dp/{}'}
+
+# find_libby_library = 'https://libbysearch.com/'
 
 
 def setup_driver():
@@ -148,6 +162,38 @@ def asin_to_isbn(asin_list: list):
         exit(1)
 
 
+def isbn_free_search_builder(isbn_10_list, isbn_13_list):
+    """
+    """
+    isbn_10_search_urls = []
+    isbn_13_search_urls = []
+    try:
+        logger.info('Parsing list of free options...')
+        for isbn_10 in isbn_10_list:
+            for website, template in isbn_10_base_urls.items():
+                url = template.format(isbn_10)
+                isbn_10_search_urls.append(url)
+
+        # TODO: Google URL doesn't work quite right
+        for isbn_13 in isbn_13_list:
+            for website, template in isbn_13_base_urls.items():
+                url = template.format(isbn_13)
+                isbn_13_search_urls.append(url)
+
+        logger.info('Returning list of free ISBN urls...')
+        return isbn_10_search_urls, isbn_13_search_urls
+
+    except BaseException as e:
+        logger.error('isbn_free_search_builder has encountered an error. The error reads: {}'.format(e))
+        exit(1)
+
+# TODO: Code paid builder as last resort for when free options are not found, consider amazon smile links.
+# def isbn_paid_search_buidler():
+#     logger.info('Parsing list for discounted options...')
+#     logger.info('Parsing list for dang near full priced options...')
+#     pass
+
+
 def get_amazon_wishlist_urls():
     """
     """
@@ -159,10 +205,12 @@ def get_amazon_wishlist_urls():
         driver.quit()
 
         item_urls = extract_wishlist_urls(soup)
+        # TODO: item_urls are clean links back to URLS for Amazon, for use in some sort of "paid_parser" later.
         clean_isbn_list, _ = clean_urls(item_urls)
         final_isbn_10_list, final_isbn_13_list = asin_to_isbn(clean_isbn_list)
+        isbn_10_search_urls, isbn_13_search_urls = isbn_free_search_builder(final_isbn_10_list, final_isbn_13_list)
 
-        return final_isbn_10_list, final_isbn_13_list
+        return isbn_10_search_urls, isbn_13_search_urls
 
     except BaseException as e:
         logger.error('extract_wishlist_urls has encountered an error. The error reads: {}'.format(e))
@@ -170,11 +218,12 @@ def get_amazon_wishlist_urls():
 
 
 def main():
-    final_isbn_10_list, final_isbn_13_list = get_amazon_wishlist_urls()
-    # TODO: Add library search functionality.
+    isbn_10_search_urls, isbn_13_search_urls = get_amazon_wishlist_urls()
+    # TODO: Add url checks to confirm if book is found or not, different for each website.
+    # TODO: Start to consider breaking this out into other .py files.
     try:
-        logger.info(final_isbn_10_list)
-        logger.info(final_isbn_13_list)
+        logger.info(isbn_10_search_urls)
+        logger.info(isbn_13_search_urls)
 
     except BaseException as e:
         logger.error('main has encountered an error. The error reads: {}'.format(e))
